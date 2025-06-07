@@ -4,7 +4,8 @@ module PPMReader (
     isValid,
     p3top2,
     p2top1,
-    invert
+    invert,
+    addEdge
 ) where
 
 import Text.Read
@@ -68,19 +69,39 @@ invert ppm = PPM {
     payload = (calcInvPix (payload ppm) (res ppm))
 }
 
+-- baut ppm mit neuen width height und payload
 addEdge::Int->(Int,Int,Int)->PPM->PPM
 addEdge size color ppm = PPM {
     pType = (pType ppm),
     dimension = (newWidth, newHeight),
     res = (res ppm),
-    payload = -- hier fehlt code
+    payload = newPayload
 } 
     where
         newWidth = (2*size) + (fst (dimension ppm))
         newHeight = (2*size) + (snd (dimension ppm))
+        newPayload = calcEdgePayload (payload ppm) size color (pType ppm)
 
 
 -- meinen kleinen Helferlein bohaaaa o_o -------------------------------
+
+-- 
+calcEdgePayload::[Int]->Int->(Int,Int,Int)->Int->[Int]
+calcEdgePayload oldP size col pType = case pType of
+    1 -> calcEdge oldP size binP
+    2 -> calcEdge oldP size grayP
+    3 -> calcEdge oldP (size*3) buntP
+    where
+        binP = calcBinPix grayP
+        grayP = calcGrayPix buntP
+        buntP = [fstT col]++[sndT col]++[trdT col]
+
+calcEdge::[Int]->Int->[Int]->[Int]
+calcEdge org size col = (topOrBotRow ++ () ++ topOrBotRow)
+    where topOrBotRow = (take ((length org)+(2*size)) (cycle col))::[Int]
+
+--recEdgeBuild::[Int]->Int->[Int]->[Int]
+--recEdgeBuild (o:os) size col = (take size (cycle col))
 
 --invertiert jedes rot grün und gelb, ohne rücksicht auf pixel
 calcInvPix::[Int]->Int->[Int]
@@ -120,5 +141,11 @@ myParser _ = Nothing
 delComments::[String]->[String]
 delComments lst = filter (\l -> head l /= '#') lst
 
-trd::(a, b, c)->c
-trd (_, _, drei) = drei
+trdT::(a, b, c)->c
+trdT (_, _, drei) = drei
+
+sndT::(a,b,c)->b
+sndT (_, zwei, _) = zwei
+
+fstT::(a,b,c)->a
+fstT (eins, _, _) = eins

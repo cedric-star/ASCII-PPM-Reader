@@ -4,7 +4,8 @@ import PPMReader(
     isValid,
     p3top2,
     p2top1,
-    invert)
+    invert,
+    addEdge)
 
 
 --MagicNumber 	Dateityp 	        Kodierung
@@ -30,6 +31,12 @@ main = do
             logOrWrite "P3 not to P2 changable" "grayXrlab.ppm" grayPPM
             let bwPPM = grayPPM >>= p2top1
             logOrWrite "P2 not to P1 changable" "blackwhiteXrlab.ppm" bwPPM
+
+    putStrLn "------------------"
+    putStrLn "------------------"
+    putStrLn "------------------"
+    putStrLn "Adding border"
+
 
 
 
