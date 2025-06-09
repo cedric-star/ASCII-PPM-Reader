@@ -10,13 +10,13 @@ module PPMReader (
 
 import Text.Read
 
-
 data PPM = PPM {
     pType::Int,
     dimension::(Int,Int),
     res::Int, --8Bit, also 255 erwartet (als maximalwert)
     payload::[Int]
 }
+
 instance Show PPM where
     show (PPM t d r p) = 
         "P"++(show t)++"\n"++
@@ -25,7 +25,7 @@ instance Show PPM where
         (show r)++"\n"++
         (showIntAr p)
 
--- wen readFile aufgerufen wird, kommt der string daraus hierrein
+-- aufrufende (wrapper) Funktion zum Parsen des Inhalts
 parsePPM::String->Maybe PPM
 parsePPM content = myParser cleared
     where 
@@ -80,58 +80,57 @@ addEdge size color ppm = PPM {
     where
         newWidth = (2*size) + (fst (dimension ppm))
         newHeight = (2*size) + (snd (dimension ppm))
-        newPayload = calcEdgePayload (payload ppm) size color (pType ppm)
+        newPayload = addTopBots (3*newWidth) ((fst (dimension ppm))*3) size color (payload ppm)
+
+-- Hilfsfunktionen ------------------------------------------------------
+
+addTopBots::Int->Int->Int->(Int,Int,Int)->[Int]->[Int]
+addTopBots width oldWidth size color pload = botOrTopRows ++ rest ++ botOrTopRows
+    where 
+        colList = triplToList color 
+        botOrTopRows = take (width*size) (cycle colList)
+        rest = addLR chonk (sublistFrom pload oldWidth)
+        chonk = take (size*3) (cycle colList) --chonk = one part of row that come before or after every old pixel line
+
+addLR::[Int]->[[Int]]->[Int]
+addLR _ [] = []
+addLR chonk (x:xs) = chonk++x++chonk++addLR chonk xs
+
+sublistFrom :: [a] -> Int -> [[a]]
+sublistFrom [] _ = []
+sublistFrom xs n
+    | n <= 0    = error "Index muss > 0 sein"
+    | otherwise = take n xs : sublistFrom (drop n xs) n
 
 
--- meinen kleinen Helferlein bohaaaa o_o -------------------------------
-
--- 
-calcEdgePayload::[Int]->Int->(Int,Int,Int)->Int->[Int]
-calcEdgePayload oldP size col pType = case pType of
-    1 -> calcEdge oldP size binP
-    2 -> calcEdge oldP size grayP
-    3 -> calcEdge oldP (size*3) buntP
-    where
-        binP = calcBinPix grayP
-        grayP = calcGrayPix buntP
-        buntP = [fstT col]++[sndT col]++[trdT col]
-
-calcEdge::[Int]->Int->[Int]->[Int]
-calcEdge org size col = (topOrBotRow ++ () ++ topOrBotRow)
-    where topOrBotRow = (take ((length org)+(2*size)) (cycle col))::[Int]
-
---recEdgeBuild::[Int]->Int->[Int]->[Int]
---recEdgeBuild (o:os) size col = (take size (cycle col))
-
---invertiert jedes rot grün und gelb, ohne rücksicht auf pixel
+-- invertiert jedes rot grün und blau, ohne rücksicht auf pixel
 calcInvPix::[Int]->Int->[Int]
 calcInvPix [] _ = []
-calcInvPix (rgb:rest) rs = [(rs-rgb)]++(calcInvPix rest rs)
+calcInvPix (rgb:rest) rs = (rs - rgb) : calcInvPix rest rs
 
 -- wandelt graustufen in schwarz/weiß um
 calcBinPix::[Int]->[Int]
 calcBinPix [] = []
-calcBinPix (g:gs) = [bin] ++ (calcBinPix gs)
-    where bin = (\gr ->if gr > 128 then 0
-                else 1) g
+calcBinPix (g:gs) = bin : calcBinPix gs
+    where bin = if g > 128 then 0 else 1
 
 -- wandelt alle pixel mit rgb in pixel mit einem grauton um
 calcGrayPix::[Int]->[Int]
 calcGrayPix [] = []
-calcGrayPix (r:g:b:rest) = [(round gray)] ++ (calcGrayPix rest)
-    where gray = (fromIntegral (r+g+b))/3 ::Float
+calcGrayPix (r:g:b:rest) = round gray : calcGrayPix rest
+    where gray = (fromIntegral (r+g+b))/3 :: Float
 
 -- zeigt den payload ohne die klammern kommas und so an für dateiausgabe
 showIntAr::[Int]->String
-showIntAr [] = []
-showIntAr (x:xs) = (show x) ++ "\n" ++ (showIntAr xs)
+showIntAr [] = ""
+showIntAr (x:xs) = show x ++ "\n" ++ showIntAr xs
 
 -- verpackt bereinigte Zeilen als PPM
 myParser::[String]->Maybe PPM
 myParser (t:d:r:p) = Just (PPM {pType=pType, dimension=dimension, res=res, payload=payload})
     where
         pType = read (tail t)
-        dimension = (read (head dims), read (head $ tail dims))
+        dimension = (read (head dims), read (dims !! 1))
         dims = words d
         res = read r
         payload = map read p
@@ -139,7 +138,7 @@ myParser _ = Nothing
 
 -- löscht alle Kommentarzeilen
 delComments::[String]->[String]
-delComments lst = filter (\l -> head l /= '#') lst
+delComments lst = filter (\l -> not (null l) && head l /= '#') lst
 
 trdT::(a, b, c)->c
 trdT (_, _, drei) = drei
@@ -149,3 +148,6 @@ sndT (_, zwei, _) = zwei
 
 fstT::(a,b,c)->a
 fstT (eins, _, _) = eins
+
+triplToList::(a,a,a)->[a]
+triplToList (a, b, c) = [a, b, c]
