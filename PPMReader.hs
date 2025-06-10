@@ -39,7 +39,11 @@ isValid (Just ppm) = if expected == actual
                      then Just ppm
                      else Nothing
     where
-        expected = ((fst $ dimension ppm)*(snd $ dimension ppm))*3
+        pixMult = (\x -> case x of
+            1 -> 1
+            2-> 1
+            3-> 3) (pType ppm)
+        expected = ((fst $ dimension ppm)*(snd $ dimension ppm))*pixMult
         actual = length (payload ppm)
 
 p3top2::PPM-> Maybe PPM
@@ -63,10 +67,10 @@ p2top1 ppm = if (pType ppm) /= 2 then Nothing
 -- nur für P3 und P2 
 invert::PPM->PPM
 invert ppm = PPM {
-    pType = 3,
+    pType = (pType ppm),
     dimension = (dimension ppm),
     res = (res ppm),
-    payload = (calcInvPix (payload ppm) (res ppm))
+    payload = (calcInvPix (pType ppm) (payload ppm) (res ppm))
 }
 
 -- baut ppm mit neuen width height und payload
@@ -104,9 +108,14 @@ sublistFrom xs n
 
 
 -- invertiert jedes rot grün und blau, ohne rücksicht auf pixel
-calcInvPix::[Int]->Int->[Int]
-calcInvPix [] _ = []
-calcInvPix (rgb:rest) rs = (rs - rgb) : calcInvPix rest rs
+calcInvPix::Int->[Int]->Int->[Int]
+calcInvPix _ [] _ = []
+calcInvPix (1) (bin:rest) rs = [converted] ++ calcInvPix 1 rest rs
+    where
+        converted = (\x -> if x==1 then 0 
+                        else 1) bin
+calcInvPix (2) lst rs = calcInvPix 3 lst rs
+calcInvPix (3) (rgb:rest) rs = (rs - rgb) : calcInvPix 3 rest rs
 
 -- wandelt graustufen in schwarz/weiß um
 calcBinPix::[Int]->[Int]
