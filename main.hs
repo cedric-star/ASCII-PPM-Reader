@@ -7,67 +7,65 @@ import PPMReader(
     invert,
     addEdge)
 
+import System.Directory
 
---MagicNumber 	Dateityp 	        Kodierung
---P1 	        Portable Bitmap 	ASCII
---P2 	        Portable Graymap 	ASCII
---P3 	        Portable Pixmap 	ASCII
--- -> P4-P6 sind analog, aber mit binärer codierung, werden hier NICHT behandelt, nur ASCII
-
-main::IO ()
+main :: IO ()
 main = do
-
-    myData <- readFile "xrlab.ppm"
-    let ppmMaybe = parsePPM myData
+    createDirectory "out"
+    putStrLn "(0)   convert p3 to p2"
+    putStrLn "(1)   convert p2 to p1"
+    putStrLn "(2)   invert ppm for all three types"
+    putStrLn "(3)   add Edge to ppm (only p3)"
+    putStrLn "------------------------------------"
+    putStrLn ""
+    putStrLn "put in .ppm file:"
+    filePath <- getLine
+    putStrLn "choose action (0-3):"
+    action <- getLine
+    content <- readFile filePath
+    let ppmMaybe = parsePPM content
     case isValid ppmMaybe of
-        Nothing   -> putStrLn "PPM P3 is not valid!"
-        Just ppm  -> do
-            putStrLn "PPM P3 is valid!"
-            writeFile "./outputFiles/invertedXrlab.ppm" (show $ invert ppm)
-            let grayPPM = p3top2 ppm
-            logOrWrite "P3 not to P2 changable" "grayXrlab.ppm" grayPPM
-            let bwPPM = grayPPM >>= p2top1
-            logOrWrite "P2 not to P1 changable" "blackwhiteXrlab.ppm" bwPPM
+        Nothing -> putStrLn "PPM file is not valid!"
+        Just ppm -> case action of
+            "0" -> convertP3toP2 ppm
+            "1" -> convertP2toP1 ppm
+            "2" -> invertPPM ppm
+            "3" -> addEdgePPM ppm
+            _   -> putStrLn "Invalid action!"
 
-    myDataP2 <- readFile "./outputFiles/grayXrlab.ppm"
-    case isValid (parsePPM myDataP2) of
-        Nothing -> putStrLn "pp2 nicht gültig"
-        Just ppm -> putStrLn "pp2 ist gültig"
+-- (0) P3 zu P2
+convertP3toP2 :: PPM -> IO ()
+convertP3toP2 ppm =
+    case p3top2 ppm of
+        Nothing -> putStrLn "Not a P3 file or conversion failed."
+        Just gray -> do
+            writeFile "./out/gray.ppm" (show gray)
+            putStrLn "Converted to P2 and saved as ./out/gray.ppm"
 
-    myDataP1 <- readFile "./outputFiles/blackwhiteXrlab.ppm"
-    case isValid (parsePPM myDataP1) of
-        Nothing -> putStrLn "pp1 nicht gültig"
-        Just ppm -> do
-            putStrLn "pp1 ist gültig"
-            writeFile "./outputFiles/invp1test.ppm" (show (invert ppm))
+-- (1) P2 zu P1
+convertP2toP1 :: PPM -> IO ()
+convertP2toP1 ppm =
+    case p2top1 ppm of
+        Nothing -> putStrLn "Not a P2 file or conversion failed."
+        Just bw -> do
+            writeFile "./out/bw.ppm" (show bw)
+            putStrLn "Converted to P1 and saved as ./out/bw.ppm"
 
-    putStrLn "------------------"
-    putStrLn "------------------"
-    putStrLn "------------------"
-    putStrLn "Adding border"
+-- (2) invertieren
+invertPPM :: PPM -> IO ()
+invertPPM ppm = do
+    writeFile "./out/invert.ppm" (show $ invert ppm)
+    putStrLn "Inverted and saved as ./out/invert.ppm"
 
-    myEdge <- readFile "test.ppm"
-    let mayTest = parsePPM myEdge
-    case isValid mayTest of
-        Nothing -> putStrLn "test not readanle"
-        Just eppm -> do
-            let edgyMedgy = addEdge 2 (200, 0, 0) eppm
-            logOrWrite "ppm not edgeable" "testBorder.ppm" (Just edgyMedgy)
-
-    putStrLn "------------------"
-
-
-
-
-
--- hallo hier unten sind nur Hilfsfunktionen...
-
-
--- schreibt 
-logOrWrite::String->FilePath->Maybe PPM->IO()
-logOrWrite failMsg path maybePPM =
-    case maybePPM of
-        Nothing -> putStrLn failMsg
-        Just p  -> writeFile ("./outputFiles/" ++ path) (show p)
-
-                    
+-- (3) addEdge
+addEdgePPM :: PPM -> IO ()
+addEdgePPM ppm = do
+    putStrLn "Edge size (Int):"
+    sizeStr <- getLine
+    let size = read sizeStr :: Int
+    putStrLn "Edge color as R G B (z.B. 255 0 0):"
+    colorStr <- getLine
+    let [r,g,b] = map read (words colorStr)
+    let edged = addEdge size (r,g,b) ppm
+    writeFile "./out/edged.ppm" (show edged)
+    putStrLn "Edge added and saved as ./out/edged.ppm"

@@ -82,9 +82,13 @@ addEdge size color ppm = PPM {
     payload = newPayload
 } 
     where
+        pixMult = (\x -> case x of
+            1 -> 1
+            2-> 1
+            3-> 3) (pType ppm)
         newWidth = (2*size) + (fst (dimension ppm))
         newHeight = (2*size) + (snd (dimension ppm))
-        newPayload = addTopBots (3*newWidth) ((fst (dimension ppm))*3) size color (payload ppm)
+        newPayload = addTopBots (pixMult*newWidth) ((fst (dimension ppm))*3) size color (payload ppm)
 
 -- Hilfsfunktionen ------------------------------------------------------
 
@@ -100,7 +104,7 @@ addLR::[Int]->[[Int]]->[Int]
 addLR _ [] = []
 addLR chonk (x:xs) = chonk++x++chonk++addLR chonk xs
 
-sublistFrom :: [a] -> Int -> [[a]]
+sublistFrom::[a]->Int->[[a]]
 sublistFrom [] _ = []
 sublistFrom xs n
     | n <= 0    = error "Index muss > 0 sein"
