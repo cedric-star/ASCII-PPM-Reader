@@ -11,7 +11,13 @@ import System.Directory
 
 main :: IO ()
 main = do
-    createDirectory "out"
+    let outPutPath = "./out"
+    exists <- doesDirectoryExist outPutPath
+    if exists
+        then putStrLn ""
+        else createDirectory outPutPath
+
+
     putStrLn "(0)   convert p3 to p2"
     putStrLn "(1)   convert p2 to p1"
     putStrLn "(2)   invert ppm for all three types"
